@@ -22,22 +22,36 @@ export default function ArbEngineShell({ engine }: { engine: EngineConfig }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [demoShown, setDemoShown] = useState(false)
   const [demoVisible, setDemoVisible] = useState(false)
+  const [typedInput, setTypedInput] = useState('')
+  const [typingDone, setTypingDone] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const key = `hive_demo_${engine.slug}`
     if (!localStorage.getItem(key)) {
       setDemoVisible(true)
-      setDemoShown(true)
-      const timer = setTimeout(() => {
-        setDemoVisible(false)
-        localStorage.setItem(key, '1')
-      }, 10000)
-      return () => clearTimeout(timer)
     }
   }, [engine.slug])
+
+  // Typewriter effect for demo input
+  useEffect(() => {
+    if (!demoVisible) return
+    setTypedInput('')
+    setTypingDone(false)
+    let i = 0
+    const interval = setInterval(() => {
+      i++
+      setTypedInput(engine.demoInput.slice(0, i))
+      if (i >= engine.demoInput.length) { clearInterval(interval); setTypingDone(true) }
+    }, 28)
+    return () => clearInterval(interval)
+  }, [demoVisible, engine.demoInput])
+
+  function dismissForever() {
+    localStorage.setItem(`hive_demo_${engine.slug}`, '1')
+    setDemoVisible(false)
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -99,21 +113,27 @@ export default function ArbEngineShell({ engine }: { engine: EngineConfig }) {
       {demoVisible && (
         <div className="bg-zinc-900 border-b border-zinc-800">
           <div className="max-w-3xl mx-auto px-6 py-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-widest mb-3">Example</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-zinc-500 uppercase tracking-widest">Live example</p>
+              <button onClick={() => setDemoVisible(false)} className="text-zinc-600 hover:text-zinc-400 text-lg leading-none">×</button>
+            </div>
             <div className="flex justify-end mb-2">
-              <div className="bg-amber-400 text-zinc-900 px-4 py-2 rounded-xl text-sm max-w-2xl">
-                {engine.demoInput}
+              <div className="bg-amber-400 text-zinc-900 px-4 py-2 rounded-xl text-sm max-w-2xl font-mono">
+                {typedInput}{!typingDone && <span className="animate-pulse">▌</span>}
               </div>
             </div>
             <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 text-sm text-zinc-200 max-w-2xl whitespace-pre-wrap leading-relaxed">
               {engine.demoOutput}
             </div>
-            <button
-              onClick={() => { setDemoVisible(false); localStorage.setItem(`hive_demo_${engine.slug}`, '1') }}
-              className="mt-3 text-xs text-zinc-600 hover:text-zinc-400"
-            >
-              Dismiss
-            </button>
+            <div className="mt-3 flex items-center gap-4">
+              <button onClick={dismissForever} className="text-xs text-zinc-600 hover:text-zinc-400 underline underline-offset-2">
+                Don&apos;t show me this demo again
+              </button>
+              <span className="text-zinc-800 text-xs">·</span>
+              <button onClick={() => setDemoVisible(false)} className="text-xs text-zinc-600 hover:text-zinc-400">
+                Hide for now
+              </button>
+            </div>
           </div>
         </div>
       )}
